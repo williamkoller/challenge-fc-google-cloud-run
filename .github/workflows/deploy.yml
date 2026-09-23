@@ -1,0 +1,87 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: ${{ vars.GCP_REGION || 'southamerica-east1' }}
+  TF_IN_AUTOMATION: "true"
+  TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+  TF_VAR_region: ${{ vars.GCP_REGION || 'southamerica-east1' }}
+  TF_VAR_weather_api_key: ${{ secrets.WEATHER_API_KEY }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.27"
+
+      - name: Run tests
+        run: go test -race -shuffle=on ./...
+
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Resolve image name
+        run: echo "TF_VAR_image=${GCP_REGION}-docker.pkg.dev/${TF_VAR_project_id}/cep-weather/api:${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Create Artifact Registry
+        run: |
+          terraform -chdir=terraform/service init -input=false \
+            -backend-config="bucket=${TF_VAR_project_id}-cep-weather-tfstate"
+          terraform -chdir=terraform/service apply -input=false -auto-approve \
+            -target=google_project_service.required \
+            -target=google_artifact_registry_repository.app
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: |
+          docker build -t "$TF_VAR_image" .
+          docker push "$TF_VAR_image"
+
+      - name: Apply Cloud Run stack
+        run: terraform -chdir=terraform/service apply -input=false -auto-approve
+
+      - name: Publish service URL
+        run: |
+          {
+            echo "### Cloud Run"
+            echo
+            terraform -chdir=terraform/service output -raw service_url
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"

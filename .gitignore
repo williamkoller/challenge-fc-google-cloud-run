@@ -1,0 +1,12 @@
+.agents/
+skills-lock.json
+AGENTS.md
+.env
+coverage.out
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+*.tfvars
+!*.tfvars.example

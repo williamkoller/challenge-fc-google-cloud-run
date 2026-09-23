@@ -1,0 +1,7 @@
+.git
+.github
+.agents
+terraform
+.env
+*.md
+coverage.out
