@@ -7,14 +7,12 @@ HTTP API that receives a Brazilian CEP, resolves the city with ViaCEP, and retur
 The live URL is printed by the Deploy workflow after the first successful apply (`terraform output service_url`). Replace this placeholder with that URL:
 
 ```text
-https://cep-weather-<hash>.a.run.app
-```
+https://cep-weather-4bggcd6kca-rj.a.run.app```
 
 Request:
 
 ```bash
-curl -sS "https://cep-weather-<hash>.a.run.app/weather/01001000"
-```
+curl -sS "https://cep-weather-4bggcd6kca-rj.a.run.app/weather/01001000"```
 
 ## API
 
