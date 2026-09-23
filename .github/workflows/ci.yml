@@ -35,7 +35,11 @@ jobs:
       - name: Check go mod tidy
         run: |
           go mod tidy
-          git diff --exit-code go.mod go.sum
+          status=$(git status --porcelain -- go.mod go.sum)
+          if [ -n "$status" ]; then
+            printf '%s\n' "$status"
+            exit 1
+          fi
 
       - name: Build
         run: go build ./...
