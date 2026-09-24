@@ -69,7 +69,8 @@ func (c *Client) Locate(ctx context.Context, zipcode string) (weather.Location, 
 	case http.StatusOK:
 	case http.StatusBadRequest:
 		return weather.Location{}, weather.ErrInvalidZipcode
-	case http.StatusNotFound:
+	case http.StatusNotFound, http.StatusBadGateway:
+		// ViaCEP answers some unknown CEPs with 502 and an nginx HTML page.
 		return weather.Location{}, weather.ErrZipcodeNotFound
 	default:
 		return weather.Location{}, fmt.Errorf("viacep status %d: %w", resp.StatusCode, weather.ErrUpstream)

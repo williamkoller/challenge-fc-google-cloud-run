@@ -56,6 +56,14 @@ func TestClientLocate(t *testing.T) {
 			wantCalled: true,
 		},
 		{
+			name:       "provider bad gateway is unknown zipcode",
+			zipcode:    "00000001",
+			status:     http.StatusBadGateway,
+			body:       `<html><head><title>502 Bad Gateway</title></head></html>`,
+			wantErr:    weather.ErrZipcodeNotFound,
+			wantCalled: true,
+		},
+		{
 			name:       "provider unavailable",
 			zipcode:    "01001000",
 			status:     http.StatusInternalServerError,
